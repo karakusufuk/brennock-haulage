@@ -24,37 +24,42 @@ window.addEventListener('load', function () { setTimeout(loadDeferred, 400); });
   var finePointer = window.matchMedia('(hover: hover) and (min-width: 761px)');
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var n = cards.length, xs = cards.map(function () { return 0; });
-  var target = 0, raf = 0, dir = 1;
-  var LEAD = 0.055, FOLLOW = 0.13, MAXGAP = 34;
+  var target = 0, sm = 0, dirS = 1, raf = 0, dir = 1, last = 0;
+  /* Everything is eased by time, not by frame, and in two stages: the pointer's own position is smoothed first (a fast
+     flick left and right is absorbed instead of being followed), then every card eases toward that. The cards at the front
+     of the motion ease quickest, those behind a touch slower, so the gaps breathe open a little and close again as the
+     followers settle. The direction is smoothed too, so turning round never swaps leader and followers abruptly. */
+  var POINTER_MS = 170, CARD_MS = 260, SPREAD = 0.28;
 
   // how far the track can slide: measured from layout (offsetLeft ignores the cards' own transforms), so the
   // answer is the same whether the cards are at rest or already shifted
   function maxShift() { var last = cards[n - 1]; return Math.max(0, last.offsetLeft + last.offsetWidth - vp.clientWidth); }
-  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
-  function render() {
-    if (reduce) { xs = xs.map(function () { return target; }); }
+  function render(now) {
+    var dt = Math.min(50, last ? now - last : 16); last = now;
+    var moving = false;
+    if (reduce) { sm = target; xs = xs.map(function () { return target; }); }
     else {
-      var lead = dir > 0 ? 0 : n - 1, step = dir > 0 ? 1 : -1;
-      xs[lead] += (target - xs[lead]) * LEAD;
-      for (var i = lead + step; i >= 0 && i < n; i += step) {
-        var prev = xs[i - step];
-        xs[i] += (prev - xs[i]) * FOLLOW;
-        // never let a follower close in on the card ahead; never let the gap open more than a breath
-        if (dir > 0) xs[i] = clamp(xs[i], prev - MAXGAP, prev);
-        else xs[i] = clamp(xs[i], prev, prev + MAXGAP);
+      sm += (target - sm) * (1 - Math.exp(-dt / POINTER_MS));
+      dirS += (dir - dirS) * (1 - Math.exp(-dt / 260));
+      if (Math.abs(target - sm) < 0.2) sm = target;
+      for (var i = 0; i < n; i++) {
+        var u = n > 1 ? (i / (n - 1)) * 2 - 1 : 0;                         // -1 first card … +1 last card
+        var tau = CARD_MS * (1 + SPREAD * dirS * u);                       // moving right: the first card is quickest; left: the last
+        xs[i] += (sm - xs[i]) * (1 - Math.exp(-dt / tau));
       }
+      if (sm !== target) moving = true;
     }
-    var moving = false, vw = vp.clientWidth;
+    var vw = vp.clientWidth;
     cards.forEach(function (c, i) {
-      if (Math.abs(target - xs[i]) < 0.3) xs[i] = target; else moving = true;
+      if (Math.abs(sm - xs[i]) < 0.25) xs[i] = sm; else moving = true;
       c.style.transform = 'translate3d(' + (-xs[i]).toFixed(2) + 'px,0,0)';
       var center = c.offsetLeft - xs[i] + c.offsetWidth / 2;
       imgs[i].style.transform = 'translate3d(' + (((center - vw / 2) / vw) * -7).toFixed(3) + '%,0,0)';
     });
     var cardW = cards[0].offsetWidth + 36, first = Math.round(xs[0] / cardW);
     bars.forEach(function (b, i) { b.classList.toggle('on', i >= first && i < first + 4); });
-    raf = moving ? requestAnimationFrame(render) : 0;
+    if (moving) raf = requestAnimationFrame(render); else { raf = 0; last = 0; }
   }
   function kick() { if (!raf) raf = requestAnimationFrame(render); }
 
@@ -64,7 +69,7 @@ window.addEventListener('load', function () { setTimeout(loadDeferred, 400); });
     var t = (e.clientX - r.left) / r.width;
     t = Math.min(1, Math.max(0, (t - 0.12) / 0.76));                    // dead zones at both edges
     var nt = t * maxShift();
-    if (Math.abs(nt - target) > 0.5) dir = nt > target ? 1 : -1;
+    if (Math.abs(nt - target) > 4) dir = nt > target ? 1 : -1;         // a few pixels of pointer wobble never turns the direction
     target = nt;
     kick();
   });
@@ -97,15 +102,16 @@ window.addEventListener('load', function () { setTimeout(loadDeferred, 400); });
   var ground = document.getElementById('duskGround');
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  var LAST = 7, STEP_MS = 1150;
+  var LAST = 7, STEP_MS = 1320;
   var stops = [0, 0, 0, 0, 0, 0, 0, 0];
   var pos = 0, target = 0, from = 0, t0 = 0, raf = 0;
   var lastInput = 0, spent = false;
   var nightSeen = false;                                                  // night has fallen once: it stays night when the scene is met again
+  var introK = reduce ? 1 : 0;                                            // the first slogan writes itself in on load, like the others do on their beat
 
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
   function sm(a, b, t) { t = clamp((t - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); }
-  function easeIO(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+  function easeIO(t) { return -(Math.cos(Math.PI * t) - 1) / 2; }                  // sine: a gentler start and stop than a cubic
   function mix(a, b, t) { return 'rgb(' + a.map(function (v, i) { return Math.round(v + (b[i] - v) * t); }).join(',') + ')'; }
   function pageTop(el) { return el.getBoundingClientRect().top + window.scrollY; }
   function hdrH() { return header.offsetHeight; }
@@ -145,14 +151,15 @@ window.addEventListener('load', function () { setTimeout(loadDeferred, 400); });
   var day = [241, 238, 230], night = [22, 30, 38], inkD = [42, 51, 46], inkN = [236, 239, 236];
   function draw(p, moveWindow) {
     // hero
-    var h = clamp(p, 0, 2), a = sm(0.15, 0.85, h), b = sm(1.15, 1.85, h);
+    var h = clamp(p, 0, 2), a = sm(0.08, 0.92, h), b = sm(1.08, 1.92, h);
     var w = [1 - a, a * (1 - b), b];
+    var wi = w.slice(); wi[0] = w[0] * sm(0, 1, introK);                    // opening: the slogan fades up while the amber rule draws across
     trucks.forEach(function (el, i) { el.style.opacity = w[i].toFixed(3); });
     textEls.forEach(function (el, i) {
-      el.style.opacity = w[i].toFixed(3);
-      el.style.transform = 'translateY(' + ((1 - w[i]) * 16).toFixed(1) + 'px)';
+      el.style.opacity = wi[i].toFixed(3);
+      el.style.transform = 'translateY(' + ((1 - wi[i]) * 16).toFixed(1) + 'px)';
     });
-    rules.forEach(function (el, i) { el.style.transform = 'scaleX(' + sm(0.15, 1, w[i]).toFixed(3) + ')'; });
+    rules.forEach(function (el, i) { el.style.transform = 'scaleX(' + sm(0.15, 1, i === 0 ? w[0] * sm(0.25, 1, introK) : w[i]).toFixed(3) + ')'; });
 
     // closing scene: truck and headline arrive on white, then night falls with the details
     rig.classList.toggle('in', p > 4.45);
@@ -197,6 +204,7 @@ window.addEventListener('load', function () { setTimeout(loadDeferred, 400); });
     else { raf = 0; t0 = 0; if (pos === 6) nightSeen = true; if (pos === 5 && from < 5 && !nightSeen) nightfall(); }
   }
   function go(n, ms) {
+    introK = 1;
     n = clamp(n, 0, LAST);
     if (n >= 3) loadDeferred();
     clearTimeout(autoTimer); nightRaf = 0;
@@ -207,7 +215,7 @@ window.addEventListener('load', function () { setTimeout(loadDeferred, 400); });
 
   /* closing scene: once the truck and headline have settled, nightRaf falls on its own.
      A scroll while it runs only hurries it along from wherever it has got to. */
-  var nightRaf = 0, nT0 = 0, nFrom = 0, NIGHT_MS = 2800;
+  var nightRaf = 0, nT0 = 0, nFrom = 0, NIGHT_MS = 3200;
   function nightfall() {
     clearTimeout(autoTimer);
     autoTimer = setTimeout(function () { nFrom = pos; nT0 = 0; nightRaf = requestAnimationFrame(nightTick); }, reduce ? 0 : 450);
@@ -289,6 +297,26 @@ window.addEventListener('load', function () { setTimeout(loadDeferred, 400); });
   window.addEventListener('resize', function () { layout(); if (!raf) draw(pos, true); });
   window.addEventListener('load', function () { layout(); draw(pos, false); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { layout(); if (!raf) draw(pos, true); });
+
+
+  /* opening: once everything is laid out, the first slogan fades up and the amber rule draws across, as on every other beat */
+  var introRaf = 0;
+  function runIntro() {
+    if (introK >= 1) return;
+    var t0i = 0, DUR = 1500;
+    function f(now) {
+      if (introK >= 1) { introRaf = 0; return; }
+      if (!t0i) t0i = now;
+      introK = clamp((now - t0i) / DUR, 0, 1);
+      if (!raf) draw(pos, false);
+      if (introK < 1) introRaf = requestAnimationFrame(f); else introRaf = 0;
+    }
+    introRaf = requestAnimationFrame(f);
+  }
+  var loadedOnce = false;
+  function startIntro() { if (loadedOnce) return; loadedOnce = true; setTimeout(runIntro, 350); }
+  window.addEventListener('load', startIntro);
+  if (document.readyState === 'complete') startIntro();
 
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
   window.scrollTo(0, 0);

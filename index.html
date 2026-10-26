@@ -31,7 +31,7 @@ body.home { line-height: 1.55; }
   font-size: clamp(28px, 4.6vw, 72px); line-height: 0.95; letter-spacing: -0.02em; text-wrap: balance;
   text-shadow: 0 2px 24px rgba(10, 14, 18, 0.45), 0 1px 3px rgba(10, 14, 18, 0.35);
   opacity: 0; will-change: opacity, transform; pointer-events: none; }
-.line.l1 { opacity: 1; }
+.line.l1 { opacity: 0; }   /* home.js writes it in on load */
 .line.l1, .line.l2, .line.l3 { left: 6%; right: 6%; text-align: center; }
 .line.l1 { top: 55%; }   /* far truck sits above, at ~44% */
 .line.l2 { top: 12%; }   /* truck mid-frame, text up in the sky */
@@ -49,7 +49,8 @@ body.home { line-height: 1.55; }
 .statement a.more { display: inline-block; margin-top: 26px; color: var(--ink); font-weight: 600; text-decoration: none; border-bottom: 2px solid var(--amber); padding-bottom: 3px; }
 
 /* sectors band */
-.sectors { background: var(--smoke-dd); color: #E9ECEA; padding-block: clamp(44px, 5vw, 64px) clamp(40px, 4.5vw, 56px); overflow: hidden; }
+.sectors { background: var(--smoke-dd); color: #E9ECEA; padding-block: clamp(44px, 5vw, 64px) clamp(40px, 4.5vw, 56px); overflow: hidden;
+  box-shadow: 0 -4px 0 var(--smoke-dd), 0 4px 0 var(--smoke-dd); }   /* the green runs 4px past both edges, so no sliver of page shows under the menu or at the bottom when the band is centred on the screen */
 .sectors .hwrap { max-width: 1152px; }
 .sec-head { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; margin-bottom: 34px; }
 .sec-head h2 { margin: 0; font-family: var(--display); font-stretch: 125%; font-weight: 900; font-size: clamp(26px, 3vw, 42px); line-height: 1.02; letter-spacing: -0.02em; white-space: nowrap; }
@@ -90,14 +91,15 @@ body.home { line-height: 1.55; }
   display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.5fr); align-items: center; gap: 24px; }
 .dusk-copy { position: relative; z-index: 2; }
 .dusk-copy h2 { margin: 0; font-family: var(--display); font-stretch: 125%; font-weight: 900; font-size: clamp(30px, 4.2vw, 60px); line-height: 1.04; letter-spacing: -0.025em; }
-.dusk-copy p.lede { margin: 26px 0 0; max-width: 44ch; font-size: 17px; line-height: 1.6; opacity: 0; transform: translateY(12px); transition: opacity 600ms, transform 700ms; color: inherit; }
+.dusk-copy p.lede { margin: 26px 0 0; max-width: 44ch; font-size: 17px; line-height: 1.6; opacity: 0; transform: translateY(12px); transition: opacity 760ms, transform 860ms; color: inherit; }
 .dusk-copy p.lede.on { opacity: 0.82; transform: none; }
 .dusk-copy h2 .ln { display: block; overflow: hidden; padding-bottom: 0.06em; }
-.dusk-copy h2 .ln span { display: block; transform: translateY(105%); transition: transform 700ms cubic-bezier(.2,.7,.2,1); }
+.dusk-copy h2 .ln span { display: block; transform: translateY(105%); transition: transform 860ms cubic-bezier(.25,.6,.25,1); }
 .dusk-copy h2 .ln.on span { transform: none; }
-.dusk-cta { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; margin-top: 36px; opacity: 0; transform: translateY(12px); transition: opacity 500ms, transform 600ms; }
+.dusk-cta { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; margin-top: 36px; opacity: 0; transform: translateY(12px); transition: opacity 640ms, transform 760ms; }
 .dusk-cta.on { opacity: 1; transform: none; }
-.rig { opacity: 0; transform: translateY(44px); transition: opacity 1000ms ease, transform 1100ms cubic-bezier(.2,.7,.2,1);
+.rig { opacity: 0; transform: translateY(44px); transition: opacity 1300ms ease, transform 1600ms cubic-bezier(.33,0,.2,1);   /* slides in without a hard start or a late snap */
+ 
   position: relative; z-index: 1; justify-self: center; width: min(88%, calc((100vh - var(--hdr)) * 0.6 * 1081 / 1147)); aspect-ratio: 1081 / 1147; max-width: 100%; }
 .rig.in { opacity: 1; transform: none; }
 .ground { position: absolute; left: 0; right: 0; bottom: 0; top: 70%; z-index: 0; pointer-events: none; opacity: var(--ground, 0);
@@ -131,6 +133,7 @@ body.home { line-height: 1.55; }
   .rig { width: min(62%, calc((100vh - var(--hdr)) * 0.36 * 1081 / 1147)); }
 }
 </style>
+<noscript><style>.line.l1{opacity:1}.rule{transform:none}</style></noscript>
 </head>
 <body class="home">
 <a class="skip" href="#main">Skip to content</a>

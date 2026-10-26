@@ -195,6 +195,16 @@
     blocks.forEach(function (bl) { bl.classList.toggle('on', bl.id === k); });
     if (push) history.replaceState(null, '', '#' + k);
     document.dispatchEvent(new Event('plx:refresh'));
+    if (push) toTop();
+  }
+  // choosing another sector brings the right-hand side back to its top (photo first); the list is sticky and stays where it is
+  function toTop() {
+    var panel = document.querySelector('.panel'), list = document.querySelector('.list');
+    if (!panel || !list) return;
+    var narrow = window.matchMedia('(max-width: 860px)').matches;
+    var hold = narrow ? (document.querySelector('header') ? document.querySelector('header').offsetHeight : 0) + 12 : parseFloat(getComputedStyle(list).top) || 0;
+    var d = (narrow ? list : panel).getBoundingClientRect().top - hold;   // narrow: the tab strip sits above the block, so the strip comes back under the menu with it
+    if (d < -2) window.scrollTo({ top: window.scrollY + d, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
   }
   btns.forEach(function (b) { b.addEventListener('click', function () { show(b.dataset.k, true); }); });
   function fit() { var m = 0; blocks.forEach(function (bl) { m = Math.max(m, bl.offsetHeight); }); document.querySelector('.panel').style.height = m + 'px'; }
