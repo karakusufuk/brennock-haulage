@@ -169,3 +169,66 @@ window.addEventListener('pageshow', function () { window.scrollTo(0, 0); });
   header.querySelectorAll('nav a').forEach(function (a) { a.addEventListener('click', function () { set(false); }); });
   window.addEventListener('resize', function () { if (window.innerWidth > 860) set(false); });
 })();
+
+// every <select> becomes a custom combobox; the native one stays hidden underneath and keeps the value
+(function () {
+  function build(sel) {
+    var wrap = document.createElement('div'); wrap.className = 'combo';
+    var btn = document.createElement('button'); btn.type = 'button'; btn.className = 'combo-btn';
+    btn.setAttribute('aria-haspopup', 'listbox'); btn.setAttribute('aria-expanded', 'false');
+    var lab = sel.closest('label'), id = 'combo' + Math.random().toString(36).slice(2, 8);
+    btn.setAttribute('aria-label', (lab && lab.firstChild && lab.firstChild.nodeType === 3 ? lab.firstChild.textContent.trim() : sel.name) || 'Choose');
+    var list = document.createElement('ul'); list.className = 'combo-list'; list.id = id; list.setAttribute('role', 'listbox'); list.hidden = true;
+    btn.setAttribute('aria-controls', id);
+    sel.parentNode.insertBefore(wrap, sel); wrap.appendChild(btn); wrap.appendChild(list); wrap.appendChild(sel);
+    sel.classList.add('combo-native'); sel.tabIndex = -1; sel.setAttribute('aria-hidden', 'true');
+    var active = -1;
+    function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+    function label() { var o = sel.options[sel.selectedIndex]; btn.innerHTML = '<span>' + (o ? esc(o.textContent) : '') + '</span><i aria-hidden="true"></i>'; }
+    function fill() {
+      list.innerHTML = [].map.call(sel.options, function (o, i) {
+        return '<li role="option" id="' + id + 'o' + i + '" data-i="' + i + '" aria-selected="' + (i === sel.selectedIndex) + '"' + (o.disabled ? ' aria-disabled="true"' : '') + '>' + esc(o.textContent) + '</li>';
+      }).join('');
+    }
+    function mark(i) {
+      active = i;
+      [].forEach.call(list.children, function (li, k) { li.classList.toggle('act', k === i); });
+      if (i < 0) { btn.removeAttribute('aria-activedescendant'); return; }
+      btn.setAttribute('aria-activedescendant', id + 'o' + i);
+      var li = list.children[i], top = li.offsetTop - 4, bot = li.offsetTop + li.offsetHeight + 4;
+      if (top < list.scrollTop) list.scrollTop = top; else if (bot > list.scrollTop + list.clientHeight) list.scrollTop = bot - list.clientHeight;
+    }
+    function open(v) {
+      if (v === !list.hidden) return;
+      list.hidden = !v; btn.setAttribute('aria-expanded', String(v)); wrap.classList.toggle('open', v);
+      if (v) {
+        fill(); wrap.classList.remove('up');
+        var r = btn.getBoundingClientRect();
+        if (r.bottom + list.offsetHeight + 12 > innerHeight && r.top > innerHeight - r.bottom) wrap.classList.add('up');
+        mark(sel.selectedIndex);
+      } else mark(-1);
+    }
+    function pick(i) { if (sel.options[i].disabled) return; var changed = sel.selectedIndex !== i; sel.selectedIndex = i; label(); open(false); if (changed) sel.dispatchEvent(new Event('change', { bubbles: true })); }
+    function step(from, d) { for (var k = from + d; k >= 0 && k < sel.options.length; k += d) if (!sel.options[k].disabled) return k; return from; }
+    btn.addEventListener('click', function () { btn.focus(); open(list.hidden); });
+    list.addEventListener('mousedown', function (e) { e.preventDefault(); });
+    list.addEventListener('click', function (e) { e.preventDefault(); var li = e.target.closest('li'); if (li) pick(+li.getAttribute('data-i')); });   // preventDefault: the wrapping <label> must not re-click the button
+    list.addEventListener('mousemove', function (e) { var li = e.target.closest('li'); if (li && li.getAttribute('aria-disabled') !== 'true') mark(+li.getAttribute('data-i')); });
+    document.addEventListener('mousedown', function (e) { if (!wrap.contains(e.target)) open(false); });
+    wrap.addEventListener('focusout', function (e) { if (e.relatedTarget && !wrap.contains(e.relatedTarget)) open(false); });
+    sel.addEventListener('change', label);
+    btn.addEventListener('keydown', function (e) {
+      var k = e.key;
+      if (list.hidden) { if (k === 'ArrowDown' || k === 'ArrowUp') { e.preventDefault(); open(true); } return; }
+      if (k === 'Escape') { e.preventDefault(); open(false); }
+      else if (k === 'ArrowDown') { e.preventDefault(); mark(step(active, 1)); }
+      else if (k === 'ArrowUp') { e.preventDefault(); mark(step(active, -1)); }
+      else if (k === 'Home') { e.preventDefault(); mark(step(-1, 1)); }
+      else if (k === 'End') { e.preventDefault(); mark(step(sel.options.length, -1)); }
+      else if (k === 'Enter' || k === ' ') { e.preventDefault(); if (active > -1) pick(active); else open(false); }
+      else if (k === 'Tab') open(false);
+    });
+    label();
+  }
+  document.querySelectorAll('select').forEach(build);
+})();

@@ -132,6 +132,14 @@ body.home { line-height: 1.55; }
   .dusk-cta { margin-top: 18px; }
   .rig { width: min(62%, calc((100vh - var(--hdr)) * 0.36 * 1081 / 1147)); }
 }
+@media (max-width: 760px) {
+  /* phones: the hero is one still picture, the truck at the front of the road */
+  .frame .truck { opacity: 0 !important; transition: none !important; }
+  .frame .truck[data-step="2"] { opacity: 1 !important; }
+  .frame .line { opacity: 0 !important; }
+  .frame .line.l3 { opacity: 1 !important; transform: none !important; }
+  .frame .steps, .stage .rule { display: none !important; }
+}
 </style>
 <noscript><style>.line.l1{opacity:1}.rule{transform:none}</style></noscript>
 </head>

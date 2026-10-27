@@ -228,7 +228,7 @@ form.cv label.file input { position: absolute; width: 1px; height: 1px; min-widt
     });
   });
   document.querySelectorAll('[data-role]').forEach(function (a) {
-    a.addEventListener('click', function () { document.getElementById('roleSel').value = a.dataset.role; });
+    a.addEventListener('click', function () { var s = document.getElementById('roleSel'); s.value = a.dataset.role; s.dispatchEvent(new Event('change')); });
   });
   var f = document.querySelector('.file input');
   f.addEventListener('change', function () { if (f.files[0]) document.getElementById('fileName').textContent = f.files[0].name; });
